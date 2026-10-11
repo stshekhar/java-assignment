@@ -30,6 +30,42 @@ Execute the Maven build on the root of the project:
 ./mvnw package
 ```
 
+## Testing
+
+Tests are under `src/test/java`. The suite includes:
+
+- **Unit tests** for warehouse use cases, location lookup, and HTTP error-type mapping. Warehouse use-case tests use an in-memory `WarehouseStore` to exercise success paths and validation/not-found errors without starting Quarkus or connecting to a database.
+- **HTTP endpoint tests** using `@QuarkusTest` and RestAssured for product and store requests. They exercise create/read/update/delete flows and representative invalid-request and not-found responses against the test application and database.
+- **Integration tests** using `@QuarkusIntegrationTest`. `WarehouseEndpointIT` currently covers listing warehouses; the archive-flow test in that class is commented out, so that behavior is not currently covered through HTTP integration.
+
+Run the regular unit and `@QuarkusTest` suite from this directory:
+
+```powershell
+.\mvnw.cmd test
+```
+
+On macOS/Linux, use `./mvnw test`. Ensure the database required by the test profile is available and configured as described in `src/main/resources/application.properties`.
+
+Run a focused test class with:
+
+```Windows
+.\mvnw.cmd -Dtest=CreateWarehouseUseCaseTest test
+```
+
+When adding tests, cover both a representative successful operation and expected failure cases (status/error type or exception, plus relevant persisted state). Keep business-rule tests isolated as unit tests; use endpoint tests for HTTP serialization, routing, and status-code behavior. `WarehouseEndpointIT` is an integration-test class and is not run by the regular `test` goal; the `native` Maven profile configures the integration-test phase.
+
+JaCoCo collects coverage from unit tests and Quarkus tests. Generate the report and enforce the 80% minimum line-coverage gate with:
+
+```Windows
+.\mvnw.cmd verify
+```
+
+The HTML report is written to `target/site/jacoco/index.html`; the machine-readable report is `target/site/jacoco/jacoco.xml`. Generated OpenAPI classes are excluded from the coverage denominator.
+
+The current JaCoCo report measures **84% line coverage** across application classes (80% is the enforced minimum). Run `verify` in CI so coverage regressions fail the build.
+
+Application errors are logged centrally by `ApiExceptionMapper`: expected client errors are logged without stack traces, while unexpected server failures include the exception and stack trace for diagnosis. Server error responses use a generic message rather than exposing internal exception details. The legacy store gateway uses the application logger and propagates synchronization failures rather than printing to stdout or silently swallowing them.
+
 ## Running the demo
 
 ### Live coding with Quarkus
